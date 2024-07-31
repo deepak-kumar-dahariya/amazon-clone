@@ -1,0 +1,60 @@
+# version: '3.9'
+
+services:
+  db:
+    image: postgres
+    container_name: postgres
+    restart: always
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_DB_TEST=${DB_NAME_TEST}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./db/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    networks:
+      - database_network
+
+  backend:
+    build: ./server
+    container_name: backend
+    restart: always
+    environment:
+      NODE_ENV: development
+
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: db
+    depends_on:
+      - db
+    ports:
+      - ${BACKEND_PORT}:3001
+    expose:
+      - 3001
+    volumes:
+      - ./server:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - database_network
+
+  frontend:
+    build: ./client
+    container_name: frontend
+    restart: always
+    environment:
+      NODE_ENV: development
+      BACKEND_HOST: backend
+      BACKEND_PORT: 3001
+    ports:
+      - ${FRONTEND_PORT}:3000
+    volumes:
+      - ./client:/usr/src/app
+      - /usr/src/app/node_modules
+
+volumes:
+  pgdata:
+networks:
+  database_network:
+    driver: bridge
